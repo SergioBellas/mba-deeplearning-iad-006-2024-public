@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import xgboost as xgb
 import numpy as np
@@ -7,6 +7,7 @@ from PIL import Image
 import io
 import base64
 
+# Criação da instância FastAPI
 app = FastAPI()
 
 # Carregamento do Modelo de Machine Learning
@@ -25,20 +26,24 @@ class ImageData(BaseModel):
 # Definição do endpoint /predict que aceita requisições via POST
 @app.post('/predict')
 async def predict(data: ImageData):
-    # Receber a imagem em base64 da requisição
-    img_bytes = base64.b64decode(data.image)
-    
-    # Processamento da Imagem
-    img = Image.open(io.BytesIO(img_bytes))
-    img = img.resize((8, 8))  # Tamanho da imagem do conjunto de dados digits
-    img = img.convert('L')  # Converter para escala de cinza
-    img_array = np.array(img).reshape(1, -1)  # Reshape para o formato de entrada do modelo
-    
-    # Predição do modelo de Machine Learning
-    prediction = xgb_model_carregado.predict(img_array)
-    
-    # Retornar o resultado da predição como JSON
-    return {"prediction": prediction.tolist()}
+    try:
+        # Receber a imagem em base64 da requisição
+        img_bytes = base64.b64decode(data.image)
+        
+        # Processamento da Imagem
+        img = Image.open(io.BytesIO(img_bytes))
+        img = img.resize((8, 8))  # Tamanho da imagem do conjunto de dados digits
+        img = img.convert('L')  # Converter para escala de cinza
+        img_array = np.array(img).reshape(1, -1)  # Reshape para o formato de entrada do modelo
+        
+        # Predição do modelo de Machine Learning
+        prediction = xgb_model_carregado.predict(img_array)
+        
+        # Retornar o resultado da predição como JSON
+        return {"prediction": prediction.tolist()}
+    except Exception as e:
+        print(f"Error occurred: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Executa a aplicação
 if __name__ == "__main__":
