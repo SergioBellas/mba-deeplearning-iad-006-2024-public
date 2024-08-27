@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, File, UploadFile
+from pydantic import BaseModel
 import xgboost as xgb
 import numpy as np
 import pickle
@@ -6,7 +7,7 @@ from PIL import Image
 import io
 import base64
 
-app = Flask(giuliana)
+app = FastAPI()
 
 # Carregamento do Modelo de Machine Learning
 def load_model():
@@ -17,12 +18,15 @@ def load_model():
 # Carregar o modelo ao iniciar a aplicação
 load_model()
 
+# Definição da classe para receber a imagem em base64
+class ImageData(BaseModel):
+    image: str
+
 # Definição do endpoint /predict que aceita requisições via POST
-@app.route('/predict', methods=['POST'])
-def predict():
+@app.post('/predict')
+async def predict(data: ImageData):
     # Receber a imagem em base64 da requisição
-    data = request.get_json()
-    img_bytes = base64.b64decode(data['image'])
+    img_bytes = base64.b64decode(data.image)
     
     # Processamento da Imagem
     img = Image.open(io.BytesIO(img_bytes))
@@ -34,9 +38,9 @@ def predict():
     prediction = xgb_model_carregado.predict(img_array)
     
     # Retornar o resultado da predição como JSON
-    return jsonify({"prediction": prediction.tolist()})
+    return {"prediction": prediction.tolist()}
 
 # Executa a aplicação
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8000)
-
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

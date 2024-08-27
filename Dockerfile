@@ -4,14 +4,14 @@ FROM python:3.9-slim
 # Set the working directory to /app
 WORKDIR /app
 
-# Copy the requirements file
+# Copy the requirements file first to leverage Docker's caching mechanism
 COPY requirements.txt .
 
 # Install the dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code
-COPY . /app/
+COPY . .
 
 # Expose the port
 EXPOSE 8000
