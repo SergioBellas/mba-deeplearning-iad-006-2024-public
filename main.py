@@ -1,24 +1,12 @@
-from fastapi import FastAPI, File
-from pydantic import BaseModel
+from flask import Flask, request, jsonify
 import xgboost as xgb
 import numpy as np
 import pickle
-import warnings
-
-import base64
 from PIL import Image
 import io
+import base64
 
-warnings.simplefilter(action='ignore', category=DeprecationWarning)
-
-app = FastAPI()
-
-# Definicao dos tipos de dados
-class PredictionResponse(BaseModel):
-    prediction: float
-
-class ImageRequest(BaseModel):
-    image: str
+app = Flask(giuliana)
 
 # Carregamento do Modelo de Machine Learning
 def load_model():
@@ -26,27 +14,29 @@ def load_model():
     with open("xgb_model.pkl", "rb") as f:
         xgb_model_carregado = pickle.load(f)
 
-# Inicializacao da Aplicacao
-@app.on_event("startup")
-async def startup_event():
-    load_model()
+# Carregar o modelo ao iniciar a aplicação
+load_model()
 
-# Definicao do endpoint /predict que aceita as requisicoes via POST
-# Esse endpoint que ira receber a imagem em base64 e ira converte-la para fazer inferencia
-@app.post("/predict", response_model=PredictionResponse)
-async def predict(request: ImageRequest):
-    # Processamento da Imagem
-    img_bytes = base64.b64decode(request.image)
-    img = Image.open(io.BytesIO(img_bytes))
-    img = img.resize((8, 8))
-    img_array = np.array(img)
-
-    # Converter a imagem pra escala de cinza
-    img_array = img_array.reshape(1, -1)
-
-    img_array = img_array.reshape(1, -1)
+# Definição do endpoint /predict que aceita requisições via POST
+@app.route('/predict', methods=['POST'])
+def predict():
+    # Receber a imagem em base64 da requisição
+    data = request.get_json()
+    img_bytes = base64.b64decode(data['image'])
     
-    # Predicao do modelo de Machine Learning
+    # Processamento da Imagem
+    img = Image.open(io.BytesIO(img_bytes))
+    img = img.resize((8, 8))  # Tamanho da imagem do conjunto de dados digits
+    img = img.convert('L')  # Converter para escala de cinza
+    img_array = np.array(img).reshape(1, -1)  # Reshape para o formato de entrada do modelo
+    
+    # Predição do modelo de Machine Learning
     prediction = xgb_model_carregado.predict(img_array)
+    
+    # Retornar o resultado da predição como JSON
+    return jsonify({"prediction": prediction.tolist()})
 
-    return {"prediction": prediction}
+# Executa a aplicação
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=8000)
+
